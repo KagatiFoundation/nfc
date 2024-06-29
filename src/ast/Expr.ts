@@ -1,9 +1,7 @@
 import { LitType, LitVal, TSPrimitive } from "../types/types";
 import { ASTOperation } from "./AST";
 
-export default abstract class Expr {
-    public abstract eval(): LitVal;
-}
+export default abstract class Expr {}
 
 export class BinaryExpr extends Expr {
     public left: Expr;
@@ -16,26 +14,18 @@ export class BinaryExpr extends Expr {
         this.right = right;
         this.op = op;
     }
-    
-    public eval(): LitVal {
-        let leftRes: LitVal = this.left.eval();
-        let rightRes: LitVal = this.right.eval();
-        switch (this.op) {
-            case ASTOperation.AST_PLUS: {
-                if (typeof leftRes.value === "number" && typeof rightRes.value === "number") {
-                    return new LitVal(leftRes.value + rightRes.value);
-                } else {
-                    throw new Error(`Can't perform addition on types: '${typeof leftRes.value}' and '${typeof rightRes.value}'`)
-                }
-            }
-            case ASTOperation.AST_MINUS: {
-                if (typeof leftRes.value === "number" && typeof rightRes.value === "number") {
-                    return new LitVal(leftRes.value - rightRes.value);
-                } else {
-                    throw new Error(`Can't perform subtraction on types: '${typeof leftRes.value}' and '${typeof rightRes.value}'`)
-                }
-            }
+
+    public containsIdentifiers(): boolean {
+        if (this.left instanceof IdentifierExpr || this.right instanceof IdentifierExpr) {
+            return true;
         }
+        if (this.left instanceof BinaryExpr && this.left.containsIdentifiers()) {
+            return true;
+        }
+        if (this.right instanceof BinaryExpr && this.right.containsIdentifiers()) {
+            return true;
+        }
+        return false;
     }
 }
 
@@ -48,8 +38,16 @@ export class LiteralExpr extends Expr {
         this.value = value;
         this.litType = typ;
     }
+}
 
-    public eval(): LitVal {
-        return this.value;
-    }
+export class IdentifierExpr extends Expr {
+    /**
+     * Position of this identifier in a symbol table.
+     */
+    public symtablePos: number;
+
+    /**
+     * Type of this identifier.
+     */
+    public valueType: LitType;
 }

@@ -1,51 +1,7 @@
 import { AST, ASTOperation } from "../ast/AST";
-import Expr, { BinaryExpr, LiteralExpr } from "../ast/Expr";
+import Expr, { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
+import RegisterManager, { RegisterState } from "../register/RegisterManager";
 import { LitType, TSPrimitive } from "../types/types";
-
-export enum RegisterState {
-    ALLOCED,
-    FREE
-}
-
-export interface Register {
-    name: string;
-    state: RegisterState;
-}
-
-export class RegisterManager {
-    private regList: Register[] = [];
-
-    public constructor(regs?: Register[]) {
-        if (regs) {
-            this.regList = regs;
-        }
-    }
-
-    public name(idx: number): string {
-        if (idx < 0 || idx > this.regList.length) {
-            throw new Error("Invalid register index given.");
-        }
-        return this.regList[idx].name;
-    }
-
-    public allocate(): number {
-        for (let i = 0; i < this.regList.length; i++) {
-            const reg = this.regList[i];
-            if (reg.state === RegisterState.FREE) {
-                reg.state = RegisterState.ALLOCED;
-                return i;
-            }
-        }
-        throw new Error("Register exhausation.");
-    }
-
-    public deallocate(idx: number) {
-        if (idx < 0 || idx > this.regList.length) {
-            throw new Error("Invalid register index given to free.");
-        }
-        this.regList[idx].state = RegisterState.FREE;
-    }
-}
 
 export default class CodeGen {
     private regMngr: RegisterManager;
@@ -68,6 +24,22 @@ export default class CodeGen {
                 name: "x3",
                 state: RegisterState.FREE
             },
+            {
+                name: "x4",
+                state: RegisterState.FREE
+            },
+            {
+                name: "x5",
+                state: RegisterState.FREE
+            },
+            {
+                name: "x6",
+                state: RegisterState.FREE
+            },
+            {
+                name: "x7",
+                state: RegisterState.FREE
+            },
         ]);
     }
 
@@ -84,6 +56,8 @@ export default class CodeGen {
             return this.genBinExpr(expr);
         } else if (expr instanceof LiteralExpr) {
             return this.genLitExpr(expr);
+        } else if (expr instanceof IdentifierExpr) {
+            return this.genIdentExpr(expr);
         }
         return -1;
     }
@@ -121,5 +95,11 @@ export default class CodeGen {
         console.log(`sub ${lrn}, ${lrn}, ${rrn}`);
         this.regMngr.deallocate(rightReg);
         return leftReg;
+    }
+
+    public genIdentExpr(expr: IdentifierExpr): number {
+        const valueReg = this.regMngr.allocate();
+        const valueRegName = this.regMngr.name(valueReg);
+        return 0;
     }
 }
