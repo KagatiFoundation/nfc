@@ -1,16 +1,19 @@
 export default interface Token {
     kind: TokenKind;
-    lexeme: string;
+    lexeme?: string;
 }
 
 export enum TokenKind {
-    KW_NATIVE,
-    KW_DEF,
-    T_IDENTIFIER,
-    T_LPAREN,
-    T_RPAREN,
-    T_SEMICOLON,
-    T_INTEGER,
-    T_PLUS,
-    T_MINUS
+    KW_NATIVE = 1,
+    KW_DEF = 2,
+    T_IDENTIFIER = 3,
+    T_LPAREN = 4,
+    T_RPAREN = 5,
+    T_SEMICOLON = 6,
+    T_INTEGER = 7,
+    T_PLUS = 8,
+    T_MINUS = 9,
+    T_EQUAL,
+    T_EOF = 10,
+    KW_LET = 11,
 };

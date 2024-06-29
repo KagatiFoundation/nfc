@@ -1,12 +1,17 @@
 import { AST, ASTOperation } from "../ast/AST";
 import Expr, { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
+import Stmt, { VarDeclStmt } from "../ast/Stmt";
+import CompilerContext from "../context/CompilerContext";
 import RegisterManager, { RegisterState } from "../register/RegisterManager";
+import { NFCSymbol } from "../symbol/SymbolTable";
 import { LitType, TSPrimitive } from "../types/types";
 
 export default class CodeGen {
     private regMngr: RegisterManager;
+    private ctx: CompilerContext;
 
-    public constructor() {
+    public constructor(ctx: CompilerContext) {
+        this.ctx = ctx;
         this.regMngr = new RegisterManager([
             {
                 name: "x0",
@@ -43,11 +48,36 @@ export default class CodeGen {
         ]);
     }
 
+    public startGen(nodes: AST[]) {
+        // search for global var decls in the symbol table and 
+        // generate a code for them first
+        console.log(".data");
+        for (const sym of this.ctx.symtable.array()) {
+            this.genGlobalVar(sym);
+        }
+        console.log("\n.text");
+        for (const ast of nodes) {
+            if (ast instanceof Expr) {
+                this.genFromAST(ast);
+            }
+        }
+    }
+
     public genFromAST(ast: AST): number {
         if (ast instanceof Expr) {
             return this.genExpr(ast);
         } else {
             throw new Error("Only expressions are supported for now.");
+        }
+    }
+
+    private genGlobalVar(sym: NFCSymbol) {
+        console.log(`.global ${sym.name}`);
+        console.log(`${sym.name}:`);
+        switch (sym.valueType) {
+            case LitType.INT: {
+                console.log(`.word 0`);
+            }
         }
     }
 

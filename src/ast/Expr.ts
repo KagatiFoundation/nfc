@@ -1,7 +1,9 @@
 import { LitType, LitVal, TSPrimitive } from "../types/types";
 import { ASTOperation } from "./AST";
 
-export default abstract class Expr {}
+export default abstract class Expr {
+
+}
 
 export class BinaryExpr extends Expr {
     public left: Expr;
@@ -50,4 +52,10 @@ export class IdentifierExpr extends Expr {
      * Type of this identifier.
      */
     public valueType: LitType;
+
+    constructor(symtablePos: number, valueType: LitType) {
+        super();
+        this.symtablePos = symtablePos;
+        this.valueType = valueType;
+    }
 }
