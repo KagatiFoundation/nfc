@@ -16,4 +16,5 @@ export enum TokenKind {
     T_EQUAL,
     T_EOF = 10,
     KW_LET = 11,
+    T_STRING = 12,
 };

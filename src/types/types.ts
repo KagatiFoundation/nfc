@@ -2,10 +2,11 @@ import Expr, { BinaryExpr, LiteralExpr } from "../ast/Expr";
 import { NFCTypeError, TypeMismatchError } from "./error";
 
 export enum LitType {
-    INT = 'int'
+    INT = 'int',
+    STR = 'str'
 }
 
-export type TSPrimitive = number | boolean;
+export type TSPrimitive = number | string | boolean;
 
 export class LitVal {
     public value: TSPrimitive;

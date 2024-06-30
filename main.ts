@@ -30,39 +30,8 @@ import { LitType } from "./src/types/types";
                 kind: TokenKind.T_EQUAL,
             },
             {
-                kind: TokenKind.T_INTEGER,
-                lexeme: "3"
-            },
-            {
-                kind: TokenKind.T_PLUS
-            },
-            {
-                kind: TokenKind.T_INTEGER,
-                lexeme: "2"
-            },
-            {
-                kind: TokenKind.T_SEMICOLON
-            },
-            {
-                kind: TokenKind.KW_LET,
-            },
-            {
-                kind: TokenKind.T_IDENTIFIER,
-                lexeme: "num2"
-            },
-            {
-                kind: TokenKind.T_EQUAL,
-            },
-            {
-                kind: TokenKind.T_INTEGER,
-                lexeme: "5"
-            },
-            {
-                kind: TokenKind.T_MINUS
-            },
-            {
-                kind: TokenKind.T_INTEGER,
-                lexeme: "3"
+                kind: TokenKind.T_STRING,
+                lexeme: "ramesh poudel"
             },
             {
                 kind: TokenKind.T_SEMICOLON

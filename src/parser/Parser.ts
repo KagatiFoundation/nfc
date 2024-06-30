@@ -33,6 +33,14 @@ export default class Parser {
                     nodes.push(varDeclAst);
                     break;
                 } 
+                case (TokenKind.KW_DEF): {
+                    const funcDecl = this.parseFuncDecl();
+                    if (funcDecl instanceof Error) {
+                        throw funcDecl;
+                    }
+                    nodes.push(funcDecl);
+                    break;
+                }
                 case TokenKind.T_EOF:
                     break outermostBreak;
                 default: {
@@ -45,6 +53,10 @@ export default class Parser {
             }
         }
         return nodes;
+    }
+
+    public parseFuncDecl(): ParseResult {
+        throw new Error("");
     }
 
     public parseVarDecl(): ParseResult {
@@ -106,6 +118,13 @@ export default class Parser {
                 return new LeafAST(
                     new LiteralExpr(new LitVal(parseInt(current.lexeme || "0")), LitType.INT),
                     ASTOperation.AST_INTLIT
+                );
+            }
+            case TokenKind.T_STRING: {
+                this.skip();
+                return new LeafAST(
+                    new LiteralExpr(new LitVal(current.lexeme || ""), LitType.STR),
+                    ASTOperation.AST_STRLIT
                 );
             }
             case TokenKind.T_IDENTIFIER: {

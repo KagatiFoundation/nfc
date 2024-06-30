@@ -29,8 +29,10 @@ export default class CodeGen {
         const astOp = inferTypeFromExpr(varStmt.expr);
         if (astOp === LitType.INT) {
             varType = "w";
+        } else if (astOp === LitType.STR) {
+            return `data $${varStmt.name} = { b "${evaledExpr}", b 0 }`;
         }
-        return `%${varStmt.name} =${varType} ${evaledExpr}`;
+        return `$${varStmt.name} =${varType} ${evaledExpr}`;
     }
 
     public genExpr(expr: Expr): string {
@@ -46,6 +48,8 @@ export default class CodeGen {
         let value: TSPrimitive | undefined;
         if (expr.litType === LitType.INT) {
             value = expr.value.value as number;
+        } else if (expr.litType === LitType.STR) {
+            value = expr.value.value;
         }
         return value ? value.toString() : "";
     }
