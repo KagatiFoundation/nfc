@@ -1,5 +1,5 @@
-import { AST, ASTOperation } from "../ast/AST";
-import Expr, { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
+import { AST, ASTOperation, LeafAST } from "../ast/AST";
+import { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
 import { VarDeclStmt } from "../ast/Stmt";
 import CompilerContext from "../context/CompilerContext";
 import SymbolNotFoundError from "../error/SymbolNotFoundError";
@@ -22,16 +22,27 @@ export default class Parser {
 
     public parse(): AST[] {
         const nodes: AST[] = [];
-        switch (this.currentToken().kind) {
-            case (TokenKind.KW_LET): {
-                const varDeclAst = this.parseVarDecl();
-                nodes.push(varDeclAst);
-                break;
-            } 
-            case TokenKind.T_EOF:
-                break;
-            default:
-                nodes.push(this.parseExpr());
+        outermostBreak:
+        while (true) {
+            switch (this.currentToken().kind) {
+                case (TokenKind.KW_LET): {
+                    const varDeclAst = this.parseVarDecl();
+                    if (varDeclAst instanceof Error) {
+                        throw varDeclAst;
+                    }
+                    nodes.push(varDeclAst);
+                    break;
+                } 
+                case TokenKind.T_EOF:
+                    break outermostBreak;
+                default: {
+                    const result = this.parseExpr();
+                    if (result instanceof Error) {
+                        throw result;
+                    }
+                    nodes.push(result);
+                }
+            }
         }
         return nodes;
     }
@@ -43,29 +54,48 @@ export default class Parser {
             throw identExpr; // because this resolves into an error
         }
         this.consume(TokenKind.T_EQUAL); // expect '='
-        const assignExpr = this.parseBinary();
+        const assignExpr = this.parseExpr();
+        if (assignExpr instanceof Error) {
+            throw assignExpr;
+        }
         this.consume(TokenKind.T_SEMICOLON);
         this.ctx.symtable.add({
             name: identExpr.lexeme || "",
             symbolType: NFCSymbolType.Variable,
-            valueType: inferTypeFromExpr(assignExpr)
+            valueType: inferTypeFromExpr(assignExpr.kind)
         });
-        return new VarDeclStmt(identExpr.lexeme || "", assignExpr);
+        return new LeafAST(
+            new VarDeclStmt(identExpr.lexeme || "", assignExpr.kind),
+            ASTOperation.AST_VARDECL,
+        );
     }
 
-    public parseExpr(): AST {
+    public parseExpr(): ParseResult {
         return this.parseBinary();
     }
 
     public parseBinary(): ParseResult {
         const left = this.parsePrimary();
+        if (left instanceof Error) {
+            throw left;
+        }
+        const currentTokKind = this.currentToken().kind;
+        if ([TokenKind.T_PLUS, TokenKind.T_MINUS].indexOf(currentTokKind) === -1) {
+            return left;
+        }
         if (this.currentToken().kind === TokenKind.T_EOF) {
             return left;
         }
         const astOp = this.getASTOperationFromTokenKind(this.currentToken().kind);
         this.skip();
         const right = this.parseBinary();
-        return new BinaryExpr(left, right, astOp);
+        if (right instanceof Error) {
+            throw right;
+        }
+        return new LeafAST(
+            new BinaryExpr(left.kind, right.kind, astOp),
+            astOp
+        );
     }
 
     public parsePrimary(): ParseResult {
@@ -73,7 +103,10 @@ export default class Parser {
         switch (current.kind) {
             case TokenKind.T_INTEGER: {
                 this.skip(); // skip past an integer literal
-                return new LiteralExpr(new LitVal(parseInt(current.lexeme || "0")), LitType.INT);
+                return new LeafAST(
+                    new LiteralExpr(new LitVal(parseInt(current.lexeme || "0")), LitType.INT),
+                    ASTOperation.AST_INTLIT
+                );
             }
             case TokenKind.T_IDENTIFIER: {
                 const identName = current.lexeme || "";
@@ -83,7 +116,10 @@ export default class Parser {
                 }
                 const result = this.ctx.symtable.find(identName);
                 if (result) {
-                    return new IdentifierExpr(result[0], result[1].valueType);
+                    return new LeafAST(
+                        new IdentifierExpr(result[0], result[1].valueType),
+                        ASTOperation.AST_IDENT
+                    );
                 } else {
                     throw new SymbolNotFoundError(identName);
                 }

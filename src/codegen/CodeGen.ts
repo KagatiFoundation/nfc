@@ -1,135 +1,70 @@
 import { AST, ASTOperation } from "../ast/AST";
-import Expr, { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
+import Expr, { BinaryExpr, LiteralExpr } from "../ast/Expr";
 import Stmt, { VarDeclStmt } from "../ast/Stmt";
 import CompilerContext from "../context/CompilerContext";
-import RegisterManager, { RegisterState } from "../register/RegisterManager";
-import { NFCSymbol } from "../symbol/SymbolTable";
-import { LitType, TSPrimitive } from "../types/types";
+import { inferTypeFromExpr, LitType, TSPrimitive } from "../types/types";
 
 export default class CodeGen {
-    private regMngr: RegisterManager;
     private ctx: CompilerContext;
 
     public constructor(ctx: CompilerContext) {
         this.ctx = ctx;
-        this.regMngr = new RegisterManager([
-            {
-                name: "x0",
-                state: RegisterState.FREE
-            },
-            {
-                name: "x1",
-                state: RegisterState.FREE
-            },
-            {
-                name: "x2",
-                state: RegisterState.FREE
-            },
-            {
-                name: "x3",
-                state: RegisterState.FREE
-            },
-            {
-                name: "x4",
-                state: RegisterState.FREE
-            },
-            {
-                name: "x5",
-                state: RegisterState.FREE
-            },
-            {
-                name: "x6",
-                state: RegisterState.FREE
-            },
-            {
-                name: "x7",
-                state: RegisterState.FREE
-            },
-        ]);
     }
 
     public startGen(nodes: AST[]) {
-        // search for global var decls in the symbol table and 
-        // generate a code for them first
-        console.log(".data");
-        for (const sym of this.ctx.symtable.array()) {
-            this.genGlobalVar(sym);
-        }
-        console.log("\n.text");
         for (const ast of nodes) {
-            if (ast instanceof Expr) {
-                this.genFromAST(ast);
+            if (ast.operation === ASTOperation.AST_VARDECL) {
+                console.log(this.genGlobalVar(ast));
+            } else {
+                const expr = ast.kind as Expr;
+                console.log(this.genExpr(expr));
             }
         }
     }
 
-    public genFromAST(ast: AST): number {
-        if (ast instanceof Expr) {
-            return this.genExpr(ast);
-        } else {
-            throw new Error("Only expressions are supported for now.");
+    private genGlobalVar(stmt: AST): string {
+        const varStmt = (stmt.kind as Stmt) as VarDeclStmt;
+        const evaledExpr = this.genExpr(varStmt.expr);
+        let varType = "";
+        const astOp = inferTypeFromExpr(varStmt.expr);
+        if (astOp === LitType.INT) {
+            varType = "w";
         }
+        return `%${varStmt.name} =${varType} ${evaledExpr}`;
     }
 
-    private genGlobalVar(sym: NFCSymbol) {
-        console.log(`.global ${sym.name}`);
-        console.log(`${sym.name}:`);
-        switch (sym.valueType) {
-            case LitType.INT: {
-                console.log(`.word 0`);
-            }
-        }
-    }
-
-    public genExpr(expr: Expr): number {
+    public genExpr(expr: Expr): string {
         if (expr instanceof BinaryExpr) {
-            return this.genBinExpr(expr);
+            return this.genBinExpr(expr as BinaryExpr);
         } else if (expr instanceof LiteralExpr) {
-            return this.genLitExpr(expr);
-        } else if (expr instanceof IdentifierExpr) {
-            return this.genIdentExpr(expr);
+            return this.genLitExpr(expr as LiteralExpr);
         }
-        return -1;
+        throw new Error("Unknown expression type!");
     }
 
-    public genLitExpr(expr: LiteralExpr): number {
+    public genLitExpr(expr: LiteralExpr): string {
         let value: TSPrimitive | undefined;
         if (expr.litType === LitType.INT) {
             value = expr.value.value as number;
         }
-        const reg = this.regMngr.allocate();
-        console.log(`mov ${this.regMngr.name(reg)}, ${value ?? ""}`);
-        return reg;
+        return value ? value.toString() : "";
     }
 
-    public genBinExpr(expr: BinaryExpr): number {
-        const leftReg = this.genExpr(expr.left);
-        const rightReg = this.genExpr(expr.right);
+    public genBinExpr(expr: BinaryExpr): string {
+        const leftEval = this.genExpr(expr.left);
+        const rightEval = this.genExpr(expr.right);
         switch (expr.op) {
-            case ASTOperation.AST_MINUS: return this.genMinus(leftReg, rightReg);
-            case ASTOperation.AST_PLUS: return this.genAdd(leftReg, rightReg);
+            case ASTOperation.AST_MINUS: return this.genSub(leftEval, rightEval);
+            case ASTOperation.AST_PLUS: return this.genAdd(leftEval, rightEval);
         }
+        return "";
     }
 
-    public genAdd(leftReg: number, rightReg: number): number {
-        const lrn = this.regMngr.name(leftReg);
-        const rrn = this.regMngr.name(rightReg);
-        console.log(`add ${lrn}, ${lrn}, ${rrn}`);
-        this.regMngr.deallocate(rightReg);
-        return leftReg;
+    public genAdd(leftVal: string, rightVal: string): string {
+        return `add ${leftVal}, ${rightVal}`;
     }
     
-    public genMinus(leftReg: number, rightReg: number): number {
-        const lrn = this.regMngr.name(leftReg);
-        const rrn = this.regMngr.name(rightReg);
-        console.log(`sub ${lrn}, ${lrn}, ${rrn}`);
-        this.regMngr.deallocate(rightReg);
-        return leftReg;
-    }
-
-    public genIdentExpr(expr: IdentifierExpr): number {
-        const valueReg = this.regMngr.allocate();
-        const valueRegName = this.regMngr.name(valueReg);
-        return 0;
+    public genSub(leftVal: string, rightVal: string): string {
+        return `sub ${leftVal}, ${rightVal}`;
     }
 }

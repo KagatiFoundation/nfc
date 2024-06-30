@@ -1,4 +1,4 @@
-import { LitType, LitVal, TSPrimitive } from "../types/types";
+import { LitType, LitVal } from "../types/types";
 import { ASTOperation } from "./AST";
 
 export default abstract class Expr {
@@ -58,4 +58,8 @@ export class IdentifierExpr extends Expr {
         this.symtablePos = symtablePos;
         this.valueType = valueType;
     }
+}
+
+export class AssignExpr extends Expr {
+
 }
