@@ -9,15 +9,28 @@ import { inferTypeFromExpr, LitType, LitVal } from "../types/types";
 
 type ParseResult = AST | Error;
 
+enum ParserScope {
+    BLOCK,
+    GLOBAL
+}
+
+interface ParserContext {
+    scope: ParserScope
+}
+
 export default class Parser {
     private tokens: Token[];
     private current: number;
     private ctx: CompilerContext;
+    private _pctx: ParserContext;
 
     constructor(ctx: CompilerContext, tokens: Token[]) {
         this.tokens = tokens;
         this.current = 0;
         this.ctx = ctx;
+        this._pctx = {
+            scope: ParserScope.GLOBAL
+        };
     }
 
     public parse(): AST[] {
@@ -56,6 +69,16 @@ export default class Parser {
     }
 
     public parseFuncDecl(): ParseResult {
+        this.changeScopeToLocal();
+        this.consume(TokenKind.KW_DEF);
+        const identExpr = this.consume(TokenKind.T_IDENTIFIER);
+        this.consume(TokenKind.T_LPAREN);
+        this.consume(TokenKind.T_RPAREN);
+        const funcBody = this.parseCompoundStmt();
+        throw new Error("");
+    }
+
+    public parseCompoundStmt(): ParseResult {
         throw new Error("");
     }
 
@@ -76,10 +99,12 @@ export default class Parser {
             symbolType: NFCSymbolType.Variable,
             valueType: inferTypeFromExpr(assignExpr.kind)
         });
-        return new LeafAST(
-            new VarDeclStmt(identExpr.lexeme || "", assignExpr.kind),
-            ASTOperation.AST_VARDECL,
-        );
+        return {
+            kind: new VarDeclStmt(identExpr.lexeme || ""),
+            left: assignExpr,
+            right: undefined,
+            operation: ASTOperation.AST_VARDECL
+        }
     }
 
     public parseExpr(): ParseResult {
@@ -136,7 +161,7 @@ export default class Parser {
                 const result = this.ctx.symtable.find(identName);
                 if (result) {
                     return new LeafAST(
-                        new IdentifierExpr(result[0], result[1].valueType),
+                        new IdentifierExpr(result[0], result[1].valueType, identName),
                         ASTOperation.AST_IDENT
                     );
                 } else {
@@ -181,5 +206,13 @@ export default class Parser {
             };
         }
         return this.tokens[this.current];
+    }
+
+    private changeScopeToLocal() {
+        this._pctx.scope = ParserScope.BLOCK;
+    }
+
+    private changeScopeToGlobal() {
+        this._pctx.scope = ParserScope.BLOCK;
     }
 }

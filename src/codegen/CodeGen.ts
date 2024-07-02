@@ -1,7 +1,8 @@
 import { AST, ASTOperation } from "../ast/AST";
-import Expr, { BinaryExpr, LiteralExpr } from "../ast/Expr";
+import Expr, { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
 import Stmt, { VarDeclStmt } from "../ast/Stmt";
 import CompilerContext from "../context/CompilerContext";
+import SymbolNotFoundError from "../error/SymbolNotFoundError";
 import { inferTypeFromExpr, LitType, TSPrimitive } from "../types/types";
 
 export default class CodeGen {
@@ -24,9 +25,10 @@ export default class CodeGen {
 
     private genGlobalVar(stmt: AST): string {
         const varStmt = (stmt.kind as Stmt) as VarDeclStmt;
-        const evaledExpr = this.genExpr(varStmt.expr);
+        const rawExpr = stmt.left?.kind as Expr;
+        const evaledExpr = this.genExpr(rawExpr);
         let varType = "";
-        const astOp = inferTypeFromExpr(varStmt.expr);
+        const astOp = inferTypeFromExpr(rawExpr);
         if (astOp === LitType.INT) {
             varType = "w";
         } else if (astOp === LitType.STR) {
@@ -40,8 +42,19 @@ export default class CodeGen {
             return this.genBinExpr(expr as BinaryExpr);
         } else if (expr instanceof LiteralExpr) {
             return this.genLitExpr(expr as LiteralExpr);
+        } else if (expr instanceof IdentifierExpr) {
+            return this.genIdentExpr(expr as IdentifierExpr);
         }
+        console.log(expr);
         throw new Error("Unknown expression type!");
+    }
+
+    public genIdentExpr(expr: IdentifierExpr): string {
+        const sym = this.ctx.symtable.get(expr.symtablePos);
+        if (!sym) {
+            throw new SymbolNotFoundError(expr.name);
+        }
+        return `%${expr.name}`;
     }
 
     public genLitExpr(expr: LiteralExpr): string {

@@ -1,14 +1,17 @@
-import Expr from "./Expr";
-
 export default abstract class Stmt {}
 
 export class VarDeclStmt extends Stmt {
     public name: string;
-    public expr: Expr;
 
-    constructor(name: string, expr: Expr) {
+    constructor(name: string) {
         super();
         this.name = name;
-        this.expr = expr;
     }
+}
+
+export interface ParameterList {
+
+}
+
+export class FuncDeclStmt extends Stmt {
 }

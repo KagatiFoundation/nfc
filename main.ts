@@ -1,6 +1,6 @@
 import CodeGen from "./src/codegen/CodeGen";
 import CompilerContext from "./src/context/CompilerContext";
-import { TokenKind } from "./src/lexer/Token";
+import Lexer from "./src/lexer/Lexer";
 import Parser from "./src/parser/Parser";
 import SymbolTable, { NFCSymbolType } from "./src/symbol/SymbolTable";
 import { LitType } from "./src/types/types";
@@ -14,32 +14,13 @@ import { LitType } from "./src/types/types";
     });
 
     const ctx: CompilerContext = {
-        symtable
+        symtable,
     };
+    const lexer = new Lexer(`let a = 34; let b = 12; let c = a + b;`);
+    const tokens = lexer.startScan();
     const p = new Parser(
         ctx, 
-        [
-            {
-                kind: TokenKind.KW_LET,
-            },
-            {
-                kind: TokenKind.T_IDENTIFIER,
-                lexeme: "num"
-            },
-            {
-                kind: TokenKind.T_EQUAL,
-            },
-            {
-                kind: TokenKind.T_STRING,
-                lexeme: "ramesh poudel"
-            },
-            {
-                kind: TokenKind.T_SEMICOLON
-            },
-            {
-                kind: TokenKind.T_EOF
-            }
-        ]
+        tokens
     );
     const result = p.parse();
     const cg = new CodeGen(ctx);

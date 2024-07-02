@@ -13,8 +13,11 @@ export enum TokenKind {
     T_INTEGER = 7,
     T_PLUS = 8,
     T_MINUS = 9,
-    T_EQUAL,
+    T_EQUAL = 16,
     T_EOF = 10,
     KW_LET = 11,
     T_STRING = 12,
+    T_LBRACE = 13,
+    T_RBRACE = 14,
+    T_NONE = 15
 };

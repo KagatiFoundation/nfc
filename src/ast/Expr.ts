@@ -53,10 +53,13 @@ export class IdentifierExpr extends Expr {
      */
     public valueType: LitType;
 
-    constructor(symtablePos: number, valueType: LitType) {
+    public name: string;
+
+    constructor(symtablePos: number, valueType: LitType, name: string) {
         super();
         this.symtablePos = symtablePos;
         this.valueType = valueType;
+        this.name = name;
     }
 }
 

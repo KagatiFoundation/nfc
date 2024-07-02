@@ -1,4 +1,4 @@
-import Expr, { BinaryExpr, LiteralExpr } from "../ast/Expr";
+import Expr, { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
 import { NFCTypeError, TypeMismatchError } from "./error";
 
 export enum LitType {
@@ -27,8 +27,12 @@ export function inferTypeFromExpr(expr: Expr): LitType {
             throw new TypeMismatchError(left, right);
         }
         return left; // 'right' could be returned as well
+    } 
+    else if (expr instanceof IdentifierExpr) {
+        return expr.valueType;
     }
     else {
+        console.log(expr);
         throw new NFCTypeError("TypeError: Unknown expression type");
     }
 }

@@ -28,5 +28,6 @@ export enum ASTOperation {
     AST_INTLIT = 3,
     AST_IDENT = 4,
     AST_VARDECL = 5,
-    AST_STRLIT = 6
+    AST_STRLIT = 6,
+    AST_FUNCDECL = 7
 }
