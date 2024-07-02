@@ -2,11 +2,9 @@ import { AST, ASTOperation, LeafAST } from "../ast/AST";
 import { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
 import { FuncDeclStmt, VarDeclStmt } from "../ast/Stmt";
 import CompilerContext from "../context/CompilerContext";
-import SymbolNotFoundError from "../error/SymbolNotFoundError";
-import UnexpectedTokenError from "../error/UnexpectedTokenError";
+import { errors } from "../error/errors";
 import Token, { TokenKind } from "../lexer/Token";
 import { NFCSymbol, NFCSymbolType } from "../symbol/SymbolTable";
-import { TypeMismatchError } from "../types/error";
 import { inferTypeFromExpr, LitType, LitVal } from "../types/types";
 
 type ParseResult = AST | Error | undefined;
@@ -116,7 +114,7 @@ export default class Parser {
                 return LitType.STR;
             }
             default: {
-                throw new UnexpectedTokenError(this.currentToken());
+                throw new errors.UnexpectedTokenError(this.currentToken());
             }
         }
     }
@@ -200,7 +198,7 @@ export default class Parser {
         const typeOfLeft = inferTypeFromExpr(left!.kind!);
         const typeOfRight = inferTypeFromExpr(right!.kind!);
         if (typeOfLeft !== typeOfRight) {
-            throw new TypeMismatchError(typeOfLeft, typeOfRight, `for operation '${astOp}'`);
+            throw new errors.TypeMismatchError(typeOfLeft, typeOfRight, `for operation '${astOp}'`);
         }
         return new LeafAST(
             new BinaryExpr(left!.kind!, right!.kind!, astOp),
@@ -238,7 +236,7 @@ export default class Parser {
                         ASTOperation.AST_IDENT
                     );
                 } else {
-                    throw new SymbolNotFoundError(identName);
+                    throw new errors.SymbolNotFoundError(identName);
                 }
             }
             default: {
