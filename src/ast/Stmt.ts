@@ -14,4 +14,10 @@ export interface ParameterList {
 }
 
 export class FuncDeclStmt extends Stmt {
+    public symtablePos: number;
+
+    constructor(symPos: number) {
+        super();
+        this.symtablePos = symPos;
+    }
 }

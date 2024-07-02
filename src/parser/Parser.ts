@@ -1,13 +1,15 @@
 import { AST, ASTOperation, LeafAST } from "../ast/AST";
 import { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
-import { VarDeclStmt } from "../ast/Stmt";
+import { FuncDeclStmt, VarDeclStmt } from "../ast/Stmt";
 import CompilerContext from "../context/CompilerContext";
 import SymbolNotFoundError from "../error/SymbolNotFoundError";
+import UnexpectedTokenError from "../error/UnexpectedTokenError";
 import Token, { TokenKind } from "../lexer/Token";
-import { NFCSymbolType } from "../symbol/SymbolTable";
+import { NFCSymbol, NFCSymbolType } from "../symbol/SymbolTable";
+import { TypeMismatchError } from "../types/error";
 import { inferTypeFromExpr, LitType, LitVal } from "../types/types";
 
-type ParseResult = AST | Error;
+type ParseResult = AST | Error | undefined;
 
 enum ParserScope {
     BLOCK,
@@ -35,51 +37,117 @@ export default class Parser {
 
     public parse(): AST[] {
         const nodes: AST[] = [];
-        outermostBreak:
         while (true) {
-            switch (this.currentToken().kind) {
-                case (TokenKind.KW_LET): {
-                    const varDeclAst = this.parseVarDecl();
-                    if (varDeclAst instanceof Error) {
-                        throw varDeclAst;
-                    }
-                    nodes.push(varDeclAst);
-                    break;
-                } 
-                case (TokenKind.KW_DEF): {
-                    const funcDecl = this.parseFuncDecl();
-                    if (funcDecl instanceof Error) {
-                        throw funcDecl;
-                    }
-                    nodes.push(funcDecl);
-                    break;
-                }
-                case TokenKind.T_EOF:
-                    break outermostBreak;
-                default: {
-                    const result = this.parseExpr();
-                    if (result instanceof Error) {
-                        throw result;
-                    }
-                    nodes.push(result);
-                }
+            if (this.currentToken().kind === TokenKind.T_EOF) {
+                break;
             }
+            const newAst = this.parseSingleStmt();
+            if (newAst instanceof Error) {
+                throw newAst;
+            }
+            if (newAst === undefined) continue;
+            nodes.push(newAst);
         }
         return nodes;
+    }
+
+    public parseSingleStmt(): ParseResult {
+        switch (this.currentToken().kind) {
+            case (TokenKind.KW_LET): {
+                const varDeclAst = this.parseVarDecl();
+                if (varDeclAst instanceof Error) {
+                    throw varDeclAst;
+                }
+                return varDeclAst;
+            } 
+            case (TokenKind.KW_DEF): {
+                const funcDecl = this.parseFuncDecl();
+                if (funcDecl instanceof Error) {
+                    throw funcDecl;
+                }
+                return funcDecl;
+            }
+            default: {
+                const result = this.parseExpr();
+                if (result instanceof Error) {
+                    throw result;
+                }
+                return result;
+            }
+        }
     }
 
     public parseFuncDecl(): ParseResult {
         this.changeScopeToLocal();
         this.consume(TokenKind.KW_DEF);
         const identExpr = this.consume(TokenKind.T_IDENTIFIER);
+        if (!this.isToken(identExpr)) {
+            throw identExpr;
+        }
         this.consume(TokenKind.T_LPAREN);
         this.consume(TokenKind.T_RPAREN);
+        this.consume(TokenKind.T_COLON);
+        const retType = this.parseType();
+        this.skip();
         const funcBody = this.parseCompoundStmt();
-        throw new Error("");
+        if (funcBody instanceof Error) {
+            throw funcBody;
+        }
+        const funcSymbol: NFCSymbol = {
+            name: identExpr.lexeme || "",
+            symbolType: NFCSymbolType.Function,
+            valueType: retType
+        };
+        const funcSymPos = this.ctx.symtable.add(funcSymbol);
+        return {
+            kind: new FuncDeclStmt(funcSymPos),
+            left: funcBody,
+            right: undefined,
+            operation: ASTOperation.AST_FUNCDECL
+        };
+    }
+
+    private parseType(): LitType {
+        switch (this.currentToken().kind) {
+            case TokenKind.KW_INT: {
+                return LitType.INT;
+            }
+            case TokenKind.KW_STR: {
+                return LitType.STR;
+            }
+            default: {
+                throw new UnexpectedTokenError(this.currentToken());
+            }
+        }
     }
 
     public parseCompoundStmt(): ParseResult {
-        throw new Error("");
+        this.consume(TokenKind.T_LBRACE);
+        let tree: ParseResult | undefined = undefined;
+        while (true) {
+            if (this.tokens[this.current].kind === TokenKind.T_RBRACE) {
+                this.skip();
+                break;
+            }
+            const stmt = this.parseSingleStmt();
+            if (stmt instanceof Error) {
+                throw stmt;
+            }
+            if (tree === undefined) {
+                tree = stmt;
+                continue;
+            } 
+            if (tree instanceof Error) {
+                throw tree;
+            }
+            tree = {
+                kind: undefined,
+                left: tree,
+                right: stmt,
+                operation: ASTOperation.AST_GLUE
+            };
+        }
+        return tree;
     }
 
     public parseVarDecl(): ParseResult {
@@ -97,7 +165,7 @@ export default class Parser {
         this.ctx.symtable.add({
             name: identExpr.lexeme || "",
             symbolType: NFCSymbolType.Variable,
-            valueType: inferTypeFromExpr(assignExpr.kind)
+            valueType: inferTypeFromExpr(assignExpr!.kind!)
         });
         return {
             kind: new VarDeclStmt(identExpr.lexeme || ""),
@@ -129,8 +197,13 @@ export default class Parser {
         if (right instanceof Error) {
             throw right;
         }
+        const typeOfLeft = inferTypeFromExpr(left!.kind!);
+        const typeOfRight = inferTypeFromExpr(right!.kind!);
+        if (typeOfLeft !== typeOfRight) {
+            throw new TypeMismatchError(typeOfLeft, typeOfRight, `for operation '${astOp}'`);
+        }
         return new LeafAST(
-            new BinaryExpr(left.kind, right.kind, astOp),
+            new BinaryExpr(left!.kind!, right!.kind!, astOp),
             astOp
         );
     }
@@ -169,7 +242,7 @@ export default class Parser {
                 }
             }
             default: {
-                throw new Error("Unimplemented!");
+                throw new Error("Unimplemented! " + current.lexeme + " " + current.kind);
             }
         }
     }
@@ -187,7 +260,7 @@ export default class Parser {
 
     private consume(kind: TokenKind): Token | Error {
         if (this.current >= this.tokens.length || this.tokens[this.current].kind !== kind) {
-            return new Error(`Unexpected token '${this.tokens[this.current]}'`);
+            return new Error(`Unexpected token '${this.tokens[this.current].lexeme}'`);
         }
         const resultToken = this.tokens[this.current];
         this.skip();
@@ -214,5 +287,9 @@ export default class Parser {
 
     private changeScopeToGlobal() {
         this._pctx.scope = ParserScope.BLOCK;
+    }
+
+    private isToken(result: Token | Error): result is Token {
+        return (result as Token).kind !== undefined;
     }
 }

@@ -16,13 +16,17 @@ import { LitType } from "./src/types/types";
     const ctx: CompilerContext = {
         symtable,
     };
-    const lexer = new Lexer(`let a = 34; let b = 12; let c = a + b;`);
-    const tokens = lexer.startScan();
-    const p = new Parser(
-        ctx, 
-        tokens
-    );
-    const result = p.parse();
-    const cg = new CodeGen(ctx);
-    cg.startGen(result);
+    try {
+        const lexer = new Lexer(`def random(): int { let a = 23; let b = 12; let c = a + b + ""; }`);
+        const tokens = lexer.startScan();
+        const p = new Parser(
+            ctx, 
+            tokens
+        );
+        const result = p.parse();
+        const cg = new CodeGen(ctx);
+        cg.startGen(result);
+    } catch (error) {
+        console.log(error);
+    }
 })();

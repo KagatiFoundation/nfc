@@ -4,7 +4,7 @@ import Stmt from "./Stmt";
 export type ASTKind = Expr | Stmt;
 
 export interface AST {
-    kind: ASTKind;
+    kind: ASTKind | undefined;
     operation: ASTOperation;
     left: AST | undefined;
     right: AST | undefined;
@@ -23,11 +23,12 @@ export class LeafAST implements AST {
 }
 
 export enum ASTOperation {
-    AST_PLUS = 1,
-    AST_MINUS = 2,
-    AST_INTLIT = 3,
-    AST_IDENT = 4,
-    AST_VARDECL = 5,
-    AST_STRLIT = 6,
-    AST_FUNCDECL = 7
+    AST_PLUS = "+",
+    AST_MINUS = "-",
+    AST_INTLIT = "int",
+    AST_IDENT = "identifier",
+    AST_VARDECL = "let",
+    AST_STRLIT = "string",
+    AST_FUNCDECL = "def",
+    AST_GLUE = "glue"
 }

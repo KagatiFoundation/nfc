@@ -6,7 +6,8 @@ import { LitType } from "../types/types";
 export const NSYMS = 1024;
 
 export enum NFCSymbolType {
-    Variable
+    Variable,
+    Function
 }
 
 export interface NFCSymbol {
@@ -42,9 +43,9 @@ export default class NFCSymbolTable {
         return 0;
     }
 
-    public get(position: number): NFCSymbol {
+    public get(position: number): NFCSymbol | undefined {
         if (position > NSYMS || position < 0) {
-            throw new Error(`NFCSymbolTable::insert(): '${position}' is out of bound for range ${NSYMS}.`);
+            return undefined;
         }
         return this.symbols[position];
     }

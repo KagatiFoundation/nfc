@@ -7,7 +7,7 @@ export class NFCTypeError extends Error {
 }
 
 export class TypeMismatchError extends NFCTypeError {
-    constructor(type1: LitType, type2: LitType) {
-        super(`TypeError: Type mismatch: '${type1}' and '${type2}'`);
+    constructor(type1: LitType, type2: LitType, message?: string) {
+        super(`TypeError: Type mismatch: '${type1}' and '${type2}' ${message ? "(" + message + ")" : ""}`);
     }
 }

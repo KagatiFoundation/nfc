@@ -1,8 +1,9 @@
 import { AST, ASTOperation } from "../ast/AST";
 import Expr, { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
-import Stmt, { VarDeclStmt } from "../ast/Stmt";
+import Stmt, { FuncDeclStmt, VarDeclStmt } from "../ast/Stmt";
 import CompilerContext from "../context/CompilerContext";
 import SymbolNotFoundError from "../error/SymbolNotFoundError";
+import { QBEType } from "../qbe/types";
 import { inferTypeFromExpr, LitType, TSPrimitive } from "../types/types";
 
 export default class CodeGen {
@@ -14,17 +15,67 @@ export default class CodeGen {
 
     public startGen(nodes: AST[]) {
         for (const ast of nodes) {
-            if (ast.operation === ASTOperation.AST_VARDECL) {
-                console.log(this.genGlobalVar(ast));
-            } else {
-                const expr = ast.kind as Expr;
-                console.log(this.genExpr(expr));
+            console.log(this.genFromAST(ast));
+        }
+    }
+
+    private genFromAST(ast: AST): string {
+        if (ast.operation === ASTOperation.AST_VARDECL) {
+            return this.genGlobalVar(ast);
+        } 
+        else if (ast.operation === ASTOperation.AST_FUNCDECL) {
+            return this.genFuncDecl(ast);
+        }
+        else if (ast.operation === ASTOperation.AST_GLUE) {
+            let leftText = "";
+            let rightText = "";
+            if (ast.left) {
+                leftText = this.genFromAST(ast.left);
+            }
+            if (ast.right) {
+                rightText = this.genFromAST(ast.right);
+            }
+            return `${leftText} ${rightText}`;
+        }
+        else {
+            const expr = ast.kind as Expr;
+            return this.genExpr(expr);
+        }
+    }
+
+    private genFuncDecl(stmt: AST): string {
+        const funcStmt = stmt.kind as FuncDeclStmt;
+        const funcSym = this.ctx.symtable.get(funcStmt.symtablePos);
+        if (funcSym === undefined) {
+            throw new Error("Function symbol not properly added to the symbol table. This is a developer's mistake.");
+        }
+        const funcRetType = funcSym.valueType;
+        let funcBodyText = '';
+        if (stmt.left) {
+            funcBodyText = this.genFromAST(stmt.left);
+        }
+        let funcText = `
+function ${this.nfcTypeToQBEType(funcRetType)} ${funcSym.name}() {\n
+@start
+    ${funcBodyText}
+}
+        `;
+        return funcText;
+    }
+
+    private nfcTypeToQBEType(typ: LitType): QBEType {
+        switch (typ) {
+            case LitType.INT: {
+                return QBEType.W; // word type
+            }
+            default: {
+                throw new Error(`NFC type '${typ}' doesn't have a corresponding type in QBE.`);
             }
         }
     }
 
     private genGlobalVar(stmt: AST): string {
-        const varStmt = (stmt.kind as Stmt) as VarDeclStmt;
+        const varStmt = stmt.kind as VarDeclStmt;
         const rawExpr = stmt.left?.kind as Expr;
         const evaledExpr = this.genExpr(rawExpr);
         let varType = "";
@@ -32,9 +83,9 @@ export default class CodeGen {
         if (astOp === LitType.INT) {
             varType = "w";
         } else if (astOp === LitType.STR) {
-            return `data $${varStmt.name} = { b "${evaledExpr}", b 0 }`;
+            return `data $${varStmt.name} = { b "${evaledExpr}", b 0 }\n`;
         }
-        return `$${varStmt.name} =${varType} ${evaledExpr}`;
+        return `$${varStmt.name} =${varType} ${evaledExpr}\n`;
     }
 
     public genExpr(expr: Expr): string {

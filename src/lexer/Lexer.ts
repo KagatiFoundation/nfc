@@ -18,7 +18,9 @@ export default class Lexer {
         this.current = 0;
         this.keywords = {
             "let": TokenKind.KW_LET,
-            "def": TokenKind.KW_DEF
+            "def": TokenKind.KW_DEF,
+            "int": TokenKind.KW_INT,
+            "str": TokenKind.KW_STR
         };
     }
     
@@ -44,23 +46,25 @@ export default class Lexer {
         }
         switch (char) {
             case ';':
-                return { kind: TokenKind.T_SEMICOLON };
+                return { kind: TokenKind.T_SEMICOLON, lexeme: ';' };
             case '(':
-                return { kind: TokenKind.T_LPAREN };
+                return { kind: TokenKind.T_LPAREN, lexeme: '(' };
             case ')':
-                return { kind: TokenKind.T_RPAREN };
+                return { kind: TokenKind.T_RPAREN, lexeme: ')' };
             case '{':
-                return { kind: TokenKind.T_LBRACE };
+                return { kind: TokenKind.T_LBRACE, lexeme: '{' };
             case '}':
-                return { kind: TokenKind.T_RBRACE };
+                return { kind: TokenKind.T_RBRACE, lexeme: '}' };
             case '=':
-                return { kind: TokenKind.T_EQUAL };
+                return { kind: TokenKind.T_EQUAL, lexeme: '=' };
             case '+':
-                return { kind: TokenKind.T_PLUS };
+                return { kind: TokenKind.T_PLUS, lexeme: '+' };
             case '-':
-                return { kind: TokenKind.T_MINUS };
+                return { kind: TokenKind.T_MINUS, lexeme: '-' };
             case ' ':
                 return { kind: TokenKind.T_NONE };
+            case ':':
+                return { kind: TokenKind.T_COLON, lexeme: ':' }
             case '\n': {
                 this.position.line += 1;
                 this.position.column = 1;
