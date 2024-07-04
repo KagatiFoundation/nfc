@@ -2,7 +2,7 @@ import { AST, ASTOperation, LeafAST } from "../ast/AST";
 import { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
 import { FuncDeclStmt, ReturnStmt, VarDeclStmt } from "../ast/Stmt";
 import CompilerContext from "../context/CompilerContext";
-import { errors, SyntaxError, TypeMismatchError, UnexpectedTokenError } from "../error/errors";
+import { errors, NFCTypeError, SyntaxError, TypeMismatchError } from "../error/errors";
 import Token, { TokenKind } from "../lexer/Token";
 import { NFCSymbol, NFCSymbolClass, NFCSymbolType } from "../symbol/SymbolTable";
 import { inferTypeFromExpr, LitType, LitVal } from "../types/types";
@@ -197,6 +197,12 @@ export default class Parser {
         if (identExpr instanceof Error) {
             throw identExpr; // because this resolves into an error
         }
+        let symbolType: LitType | undefined = undefined; // default type is not 'any' type
+        if (this.peek() === TokenKind.T_COLON) {
+            this.consume(TokenKind.T_COLON);
+            symbolType = this.parseType();
+            this.skip();
+        }
         this.consume(TokenKind.T_EQUAL); // expect '='
         const assignExpr = this.parseExpr();
         if (assignExpr instanceof Error) {
@@ -204,6 +210,12 @@ export default class Parser {
         }
         this.consume(TokenKind.T_SEMICOLON);
         const klass: NFCSymbolClass = isLocalScope ? NFCSymbolClass.LOCAL : NFCSymbolClass.GLOBAL;
+        const assignExprType = inferTypeFromExpr(assignExpr?.kind!);
+        if (symbolType) {
+            if (assignExprType !== symbolType) {
+                throw new NFCTypeError(`cannot assign value of type '${assignExprType}' to a variable of type '${symbolType}'`);
+            }
+        }
         this.ctx.symtable.add({
             name: identExpr.lexeme || "",
             symbolType: NFCSymbolType.Variable,
@@ -307,7 +319,7 @@ export default class Parser {
             throw new Error("Reached EOF.");
         }
         if (this.currentToken().kind !== kind) {
-            throw new SyntaxError(message || "");
+            throw new SyntaxError(message || `unexpected token '${this.currentToken().lexeme}'`);
         }
         const resultToken = this.tokens[this.current];
         this.skip();

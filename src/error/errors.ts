@@ -9,7 +9,7 @@ export class SymbolNotFoundError extends Error {
 
 export class SyntaxError extends Error {
     constructor(message: string) {
-        super(`Syntax Error: ${message}`);
+        super(`SyntaxError: ${message}`);
     }
 }
 
@@ -21,13 +21,13 @@ export class UnexpectedTokenError extends SyntaxError {
 
 export class NFCTypeError extends Error {
     constructor(message?: string) {
-        super(message);
+        super(`TypeError: ${message}`);
     }
 }
 
 export class TypeMismatchError extends NFCTypeError {
     constructor(type1: LitType, type2: LitType, message?: string) {
-        super(`TypeError: Type mismatch: '${type1}' and '${type2}' ${message ? "(" + message + ")" : ""}`);
+        super(`Type mismatch: '${type1}' and '${type2}' ${message ? "(" + message + ")" : ""}`);
     }
 }
 

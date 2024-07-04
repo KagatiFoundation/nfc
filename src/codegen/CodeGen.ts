@@ -68,11 +68,11 @@ export default class CodeGen {
         if (stmt.left) {
             funcBodyText = this.genFromAST(stmt.left);
         }
-        const retVal = 0;
         let funcText = `
             export function ${this.nfcTypeToQBEType(funcRetType)} $${funcSym.name}() {
             @start
                 ${funcBodyText}
+                ${funcRetType === LitType.VOID ? "ret 0" : ""}
             }
             `;
         return funcText;
@@ -91,12 +91,22 @@ export default class CodeGen {
     }
 
     private genReturnStmt(stmt: AST): string {
-        // const returtnStmt = stmt.kind as ReturnStmt;
+        const returtnStmt = stmt.kind as ReturnStmt;
+        const funcSym = this.ctx.symtable.get(returtnStmt.functionId);
+        if (!funcSym) {
+            throw new Error("Function is not found!");
+        }
         let exprEvaled: string | undefined = undefined;
         if (stmt.left) {
             exprEvaled = this.genExpr(stmt.left?.kind as Expr);
         }
-        return `ret ${exprEvaled || "0"}`;
+        const tempVarName = this.createRandomString(16);
+        if (funcSym.valueType === LitType.VOID) {
+            return 'ret 0';
+        }
+        const funcRetType = this.nfcTypeToQBEType(funcSym.valueType);
+        const retVal = `%${tempVarName} =${funcRetType} ${exprEvaled}`;
+        return `${retVal}\nret %${tempVarName}`;
     }
 
     private genGlobalVar(stmt: AST): string {
@@ -170,4 +180,13 @@ export default class CodeGen {
     public genSub(leftVal: string, rightVal: string): string {
         return `sub ${leftVal}, ${rightVal}`;
     }
+
+    private createRandomString(length: number) {
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        let result = "";
+        for (let i = 0; i < length; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }      
 }

@@ -10,7 +10,13 @@ import SymbolTable from "./src/symbol/SymbolTable";
         symtable,
     };
     try {
-        const lexer = new Lexer(`def random(): int { let a = 23; let b = 12 + 12; return ""; }`);
+        const lexer = new Lexer(
+            `let globalVar: str = "my name is ramesh poudel"; 
+             def random(input: int): int { 
+                let a: int = 23; 
+                let b: int = 12 + 12; 
+             }`
+            );
         const tokens = lexer.startScan();
         const p = new Parser(
             ctx, 

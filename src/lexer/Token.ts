@@ -20,9 +20,9 @@ export enum TokenKind {
     T_LBRACE = 13,
     T_RBRACE = 14,
     T_NONE = 15,
-    T_COLON = 16,
     KW_INT = 17,
-    KW_STR = 18,
-    KW_VOID = 19,
-    KW_RETURN = 20
+    T_COLON = 18,
+    KW_STR = 19,
+    KW_VOID = 20,
+    KW_RETURN = 21
 };
