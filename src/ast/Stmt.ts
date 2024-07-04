@@ -1,11 +1,15 @@
+import { NFCSymbolClass } from "../symbol/SymbolTable";
+
 export default abstract class Stmt {}
 
 export class VarDeclStmt extends Stmt {
     public name: string;
+    public symClass: NFCSymbolClass;
 
-    constructor(name: string) {
+    constructor(name: string, klass: NFCSymbolClass) {
         super();
         this.name = name;
+        this.symClass = klass;
     }
 }
 

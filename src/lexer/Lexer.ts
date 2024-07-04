@@ -20,7 +20,8 @@ export default class Lexer {
             "let": TokenKind.KW_LET,
             "def": TokenKind.KW_DEF,
             "int": TokenKind.KW_INT,
-            "str": TokenKind.KW_STR
+            "str": TokenKind.KW_STR,
+            "void": TokenKind.KW_VOID
         };
     }
     

@@ -5,6 +5,11 @@ import { LitType } from "../types/types";
  */
 export const NSYMS = 1024;
 
+export enum NFCSymbolClass {
+    GLOBAL,
+    LOCAL
+}
+
 export enum NFCSymbolType {
     Variable,
     Function
@@ -14,6 +19,7 @@ export interface NFCSymbol {
     name: string;
     symbolType: NFCSymbolType;
     valueType: LitType;
+    klass: NFCSymbolClass // class of the symbol
 }
 
 export default class NFCSymbolTable {

@@ -1,16 +1,27 @@
 import { AST, ASTOperation } from "../ast/AST";
 import Expr, { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
-import Stmt, { FuncDeclStmt, VarDeclStmt } from "../ast/Stmt";
+import { FuncDeclStmt, VarDeclStmt } from "../ast/Stmt";
 import CompilerContext from "../context/CompilerContext";
-import SymbolNotFoundError from "../error/SymbolNotFoundError";
+import { SymbolNotFoundError } from "../error/errors";
 import { QBEType } from "../qbe/types";
-import { inferTypeFromExpr, LitType, TSPrimitive } from "../types/types";
+import { NFCSymbolClass } from "../symbol/SymbolTable";
+import { inferTypeFromExpr, LitType } from "../types/types";
+
+interface CodeGenContext {
+    emittingBinExpr: boolean;
+    emittingFuncStmt: boolean;
+}
 
 export default class CodeGen {
     private ctx: CompilerContext;
+    private cgCtx: CodeGenContext;
 
     public constructor(ctx: CompilerContext) {
         this.ctx = ctx;
+        this.cgCtx = {
+            emittingBinExpr: false,
+            emittingFuncStmt: false
+        };
     }
 
     public startGen(nodes: AST[]) {
@@ -54,18 +65,21 @@ export default class CodeGen {
         if (stmt.left) {
             funcBodyText = this.genFromAST(stmt.left);
         }
+        const retVal = 0;
         let funcText = `
-function ${this.nfcTypeToQBEType(funcRetType)} ${funcSym.name}() {\n
-@start
-    ${funcBodyText}
-}
-        `;
+            export function ${this.nfcTypeToQBEType(funcRetType)} $${funcSym.name}() {
+            @start
+                ${funcBodyText}
+                ret ${retVal}
+            }
+            `;
         return funcText;
     }
 
     private nfcTypeToQBEType(typ: LitType): QBEType {
         switch (typ) {
-            case LitType.INT: {
+            case LitType.INT:
+            case LitType.VOID: {
                 return QBEType.W; // word type
             }
             default: {
@@ -85,7 +99,8 @@ function ${this.nfcTypeToQBEType(funcRetType)} ${funcSym.name}() {\n
         } else if (astOp === LitType.STR) {
             return `data $${varStmt.name} = { b "${evaledExpr}", b 0 }\n`;
         }
-        return `$${varStmt.name} =${varType} ${evaledExpr}\n`;
+        const varPrefix = varStmt.symClass === NFCSymbolClass.GLOBAL ? "$" : "%";
+        return `${varPrefix}${varStmt.name} =${varType} ${evaledExpr}\n`;
     }
 
     public genExpr(expr: Expr): string {
@@ -109,23 +124,32 @@ function ${this.nfcTypeToQBEType(funcRetType)} ${funcSym.name}() {\n
     }
 
     public genLitExpr(expr: LiteralExpr): string {
-        let value: TSPrimitive | undefined;
+        const ebe = this.cgCtx.emittingBinExpr;
         if (expr.litType === LitType.INT) {
-            value = expr.value.value as number;
+            /// In QBE, all instructions must have an operation, 
+            /// so add with zero is used here to simply load an immediate value.
+            return !ebe ? `add ${expr.value.value}, 0` : `${expr.value.value}`;
         } else if (expr.litType === LitType.STR) {
-            value = expr.value.value;
+            return expr.value.value.toString();
         }
-        return value ? value.toString() : "";
+        return "";
     }
 
     public genBinExpr(expr: BinaryExpr): string {
+        this.cgCtx.emittingBinExpr = true;
         const leftEval = this.genExpr(expr.left);
         const rightEval = this.genExpr(expr.right);
+        let returnVal = "";
         switch (expr.op) {
-            case ASTOperation.AST_MINUS: return this.genSub(leftEval, rightEval);
-            case ASTOperation.AST_PLUS: return this.genAdd(leftEval, rightEval);
+            case ASTOperation.AST_MINUS: {
+                returnVal = this.genSub(leftEval, rightEval);
+            }
+            case ASTOperation.AST_PLUS: {
+                returnVal = this.genAdd(leftEval, rightEval);
+            }
         }
-        return "";
+        this.cgCtx.emittingBinExpr = false;
+        return returnVal;
     }
 
     public genAdd(leftVal: string, rightVal: string): string {

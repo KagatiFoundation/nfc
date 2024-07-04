@@ -4,7 +4,7 @@ import { FuncDeclStmt, VarDeclStmt } from "../ast/Stmt";
 import CompilerContext from "../context/CompilerContext";
 import { errors } from "../error/errors";
 import Token, { TokenKind } from "../lexer/Token";
-import { NFCSymbol, NFCSymbolType } from "../symbol/SymbolTable";
+import { NFCSymbol, NFCSymbolClass, NFCSymbolType } from "../symbol/SymbolTable";
 import { inferTypeFromExpr, LitType, LitVal } from "../types/types";
 
 type ParseResult = AST | Error | undefined;
@@ -15,7 +15,8 @@ enum ParserScope {
 }
 
 interface ParserContext {
-    scope: ParserScope
+    scope: ParserScope;
+    functionId: number; // current function id that is being parsed.
 }
 
 export default class Parser {
@@ -29,7 +30,8 @@ export default class Parser {
         this.current = 0;
         this.ctx = ctx;
         this._pctx = {
-            scope: ParserScope.GLOBAL
+            scope: ParserScope.GLOBAL,
+            functionId: -1
         };
     }
 
@@ -84,19 +86,24 @@ export default class Parser {
         }
         this.consume(TokenKind.T_LPAREN);
         this.consume(TokenKind.T_RPAREN);
-        this.consume(TokenKind.T_COLON);
-        const retType = this.parseType();
-        this.skip();
-        const funcBody = this.parseCompoundStmt();
-        if (funcBody instanceof Error) {
-            throw funcBody;
+        let retType: LitType = LitType.VOID; // default return type is void
+        if (this.peek() === TokenKind.T_COLON) {
+            this.consume(TokenKind.T_COLON);
+            retType = this.parseType();
+            this.skip();
         }
         const funcSymbol: NFCSymbol = {
             name: identExpr.lexeme || "",
             symbolType: NFCSymbolType.Function,
-            valueType: retType
+            valueType: retType,
+            klass: NFCSymbolClass.GLOBAL
         };
         const funcSymPos = this.ctx.symtable.add(funcSymbol);
+        this._pctx.functionId = funcSymPos;
+        const funcBody = this.parseCompoundStmt();
+        if (funcBody instanceof Error) {
+            throw funcBody;
+        }
         return {
             kind: new FuncDeclStmt(funcSymPos),
             left: funcBody,
@@ -112,6 +119,9 @@ export default class Parser {
             }
             case TokenKind.KW_STR: {
                 return LitType.STR;
+            }
+            case TokenKind.KW_VOID: {
+                return LitType.VOID;
             }
             default: {
                 throw new errors.UnexpectedTokenError(this.currentToken());
@@ -149,6 +159,7 @@ export default class Parser {
     }
 
     public parseVarDecl(): ParseResult {
+        const isLocalScope = this._pctx.functionId !== -1;
         this.consume(TokenKind.KW_LET);
         const identExpr = this.consume(TokenKind.T_IDENTIFIER);
         if (identExpr instanceof Error) {
@@ -160,13 +171,15 @@ export default class Parser {
             throw assignExpr;
         }
         this.consume(TokenKind.T_SEMICOLON);
+        const klass: NFCSymbolClass = isLocalScope ? NFCSymbolClass.LOCAL : NFCSymbolClass.GLOBAL;
         this.ctx.symtable.add({
             name: identExpr.lexeme || "",
             symbolType: NFCSymbolType.Variable,
-            valueType: inferTypeFromExpr(assignExpr!.kind!)
+            valueType: inferTypeFromExpr(assignExpr!.kind!),
+            klass
         });
         return {
-            kind: new VarDeclStmt(identExpr.lexeme || ""),
+            kind: new VarDeclStmt(identExpr.lexeme || "", klass),
             left: assignExpr,
             right: undefined,
             operation: ASTOperation.AST_VARDECL
@@ -195,10 +208,11 @@ export default class Parser {
         if (right instanceof Error) {
             throw right;
         }
-        const typeOfLeft = inferTypeFromExpr(left!.kind!);
-        const typeOfRight = inferTypeFromExpr(right!.kind!);
-        if (typeOfLeft !== typeOfRight) {
-            throw new errors.TypeMismatchError(typeOfLeft, typeOfRight, `for operation '${astOp}'`);
+        try {
+            const _typeOfLeft = inferTypeFromExpr(left!.kind!);
+            const _typeOfRight = inferTypeFromExpr(right!.kind!);
+        } catch (error) {
+            throw error;
         }
         return new LeafAST(
             new BinaryExpr(left!.kind!, right!.kind!, astOp),
@@ -277,6 +291,10 @@ export default class Parser {
             };
         }
         return this.tokens[this.current];
+    }
+
+    private peek(): TokenKind {
+        return this.currentToken().kind;
     }
 
     private changeScopeToLocal() {

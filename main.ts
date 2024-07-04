@@ -7,17 +7,11 @@ import { LitType } from "./src/types/types";
 
 (function main() {
     const symtable = new SymbolTable();
-    symtable.add({
-        name: "number",
-        symbolType: NFCSymbolType.Variable,
-        valueType: LitType.INT
-    });
-
     const ctx: CompilerContext = {
         symtable,
     };
     try {
-        const lexer = new Lexer(`def random(): int { let a = 23; let b = 12; let c = a + b + ""; }`);
+        const lexer = new Lexer(`def random(): void { let a = 23; let b = 12 + 12; }`);
         const tokens = lexer.startScan();
         const p = new Parser(
             ctx, 
