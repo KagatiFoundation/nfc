@@ -1,8 +1,8 @@
 import { AST, ASTOperation, LeafAST } from "../ast/AST";
 import { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
-import { FuncDeclStmt, VarDeclStmt } from "../ast/Stmt";
+import { FuncDeclStmt, ReturnStmt, VarDeclStmt } from "../ast/Stmt";
 import CompilerContext from "../context/CompilerContext";
-import { errors } from "../error/errors";
+import { errors, SyntaxError, TypeMismatchError, UnexpectedTokenError } from "../error/errors";
 import Token, { TokenKind } from "../lexer/Token";
 import { NFCSymbol, NFCSymbolClass, NFCSymbolType } from "../symbol/SymbolTable";
 import { inferTypeFromExpr, LitType, LitVal } from "../types/types";
@@ -55,23 +55,18 @@ export default class Parser {
         switch (this.currentToken().kind) {
             case (TokenKind.KW_LET): {
                 const varDeclAst = this.parseVarDecl();
-                if (varDeclAst instanceof Error) {
-                    throw varDeclAst;
-                }
                 return varDeclAst;
             } 
             case (TokenKind.KW_DEF): {
                 const funcDecl = this.parseFuncDecl();
-                if (funcDecl instanceof Error) {
-                    throw funcDecl;
-                }
                 return funcDecl;
+            }
+            case TokenKind.KW_RETURN: {
+                const returnStmt = this.parseReturnStmt();
+                return returnStmt;
             }
             default: {
                 const result = this.parseExpr();
-                if (result instanceof Error) {
-                    throw result;
-                }
                 return result;
             }
         }
@@ -104,6 +99,7 @@ export default class Parser {
         if (funcBody instanceof Error) {
             throw funcBody;
         }
+        this._pctx.functionId = -1;
         return {
             kind: new FuncDeclStmt(funcSymPos),
             left: funcBody,
@@ -127,6 +123,42 @@ export default class Parser {
                 throw new errors.UnexpectedTokenError(this.currentToken());
             }
         }
+    }
+
+    public parseReturnStmt(): ParseResult {
+        const isLocalScope = this._pctx.functionId !== -1;
+        if (!isLocalScope) {
+            throw new SyntaxError("'return' statement outside of a function is not valid.");
+        }
+        this.consume(TokenKind.KW_RETURN);
+        const funcSym = this.ctx.symtable.get(this._pctx.functionId);
+        if (!funcSym) {
+            throw new Error("Function is not found!"); // will my program ever get here? I don't think so
+        }
+        const funcReturnType = funcSym.valueType;
+        const returnStmt = new ReturnStmt(this._pctx.functionId);
+        if (funcReturnType === LitType.VOID) {
+            this.consume(TokenKind.T_SEMICOLON, "function with 'void' return type can't return an expression.");
+            return new LeafAST(
+                returnStmt,
+                ASTOperation.AST_RETURN
+            );
+        }
+        const returnExpr = this.parseExpr();
+        if (returnExpr instanceof Error) {
+            throw returnExpr;
+        }
+        const returnExprType = inferTypeFromExpr(returnExpr?.kind!);
+        if (funcReturnType !== returnExprType) {
+            throw new TypeMismatchError(funcReturnType, returnExprType, `function '${funcSym.name}' cannot return value of type '${returnExprType}'`);
+        }
+        this.consume(TokenKind.T_SEMICOLON);
+        return {
+            kind: returnStmt,
+            left: returnExpr,
+            right: undefined,
+            operation: ASTOperation.AST_RETURN
+        };
     }
 
     public parseCompoundStmt(): ParseResult {
@@ -270,9 +302,12 @@ export default class Parser {
         }
     }
 
-    private consume(kind: TokenKind): Token | Error {
-        if (this.current >= this.tokens.length || this.tokens[this.current].kind !== kind) {
-            return new Error(`Unexpected token '${this.tokens[this.current].lexeme}'`);
+    private consume(kind: TokenKind, message?: string): Token | Error {
+        if (this.current >= this.tokens.length) {
+            throw new Error("Reached EOF.");
+        }
+        if (this.currentToken().kind !== kind) {
+            throw new SyntaxError(message || "");
         }
         const resultToken = this.tokens[this.current];
         this.skip();

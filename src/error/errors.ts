@@ -7,9 +7,15 @@ export class SymbolNotFoundError extends Error {
     }
 }
 
-export class UnexpectedTokenError extends Error {
+export class SyntaxError extends Error {
+    constructor(message: string) {
+        super(`Syntax Error: ${message}`);
+    }
+}
+
+export class UnexpectedTokenError extends SyntaxError {
     constructor(token: Token) {
-        super(`UnexpectedTokenError: Unexpected token '${token.lexeme}'`);
+        super(`Unexpected token '${token.lexeme}'`);
     }
 }
 
@@ -29,5 +35,6 @@ export const errors = {
     SymbolNotFoundError,
     UnexpectedTokenError,
     NFCTypeError,
-    TypeMismatchError
+    TypeMismatchError,
+    SyntaxError
 }

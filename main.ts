@@ -2,8 +2,7 @@ import CodeGen from "./src/codegen/CodeGen";
 import CompilerContext from "./src/context/CompilerContext";
 import Lexer from "./src/lexer/Lexer";
 import Parser from "./src/parser/Parser";
-import SymbolTable, { NFCSymbolType } from "./src/symbol/SymbolTable";
-import { LitType } from "./src/types/types";
+import SymbolTable from "./src/symbol/SymbolTable";
 
 (function main() {
     const symtable = new SymbolTable();
@@ -11,7 +10,7 @@ import { LitType } from "./src/types/types";
         symtable,
     };
     try {
-        const lexer = new Lexer(`def random(): void { let a = 23; let b = 12 + 12; }`);
+        const lexer = new Lexer(`def random(): int { let a = 23; let b = 12 + 12; return ""; }`);
         const tokens = lexer.startScan();
         const p = new Parser(
             ctx, 

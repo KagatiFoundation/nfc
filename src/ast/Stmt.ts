@@ -25,3 +25,12 @@ export class FuncDeclStmt extends Stmt {
         this.symtablePos = symPos;
     }
 }
+
+export class ReturnStmt extends Stmt {
+    public functionId: number;
+
+    constructor(funcId: number) {
+        super();
+        this.functionId = funcId;
+    }
+}

@@ -1,6 +1,6 @@
 import { AST, ASTOperation } from "../ast/AST";
 import Expr, { BinaryExpr, IdentifierExpr, LiteralExpr } from "../ast/Expr";
-import { FuncDeclStmt, VarDeclStmt } from "../ast/Stmt";
+import { FuncDeclStmt, ReturnStmt, VarDeclStmt } from "../ast/Stmt";
 import CompilerContext from "../context/CompilerContext";
 import { SymbolNotFoundError } from "../error/errors";
 import { QBEType } from "../qbe/types";
@@ -37,6 +37,9 @@ export default class CodeGen {
         else if (ast.operation === ASTOperation.AST_FUNCDECL) {
             return this.genFuncDecl(ast);
         }
+        else if (ast.operation === ASTOperation.AST_RETURN) {
+            return this.genReturnStmt(ast);
+        }
         else if (ast.operation === ASTOperation.AST_GLUE) {
             let leftText = "";
             let rightText = "";
@@ -70,7 +73,6 @@ export default class CodeGen {
             export function ${this.nfcTypeToQBEType(funcRetType)} $${funcSym.name}() {
             @start
                 ${funcBodyText}
-                ret ${retVal}
             }
             `;
         return funcText;
@@ -86,6 +88,15 @@ export default class CodeGen {
                 throw new Error(`NFC type '${typ}' doesn't have a corresponding type in QBE.`);
             }
         }
+    }
+
+    private genReturnStmt(stmt: AST): string {
+        // const returtnStmt = stmt.kind as ReturnStmt;
+        let exprEvaled: string | undefined = undefined;
+        if (stmt.left) {
+            exprEvaled = this.genExpr(stmt.left?.kind as Expr);
+        }
+        return `ret ${exprEvaled || "0"}`;
     }
 
     private genGlobalVar(stmt: AST): string {

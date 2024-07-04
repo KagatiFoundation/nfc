@@ -30,5 +30,6 @@ export enum ASTOperation {
     AST_VARDECL = "let",
     AST_STRLIT = "string",
     AST_FUNCDECL = "def",
-    AST_GLUE = "glue"
+    AST_RETURN = "return",
+    AST_GLUE = "glue",
 }

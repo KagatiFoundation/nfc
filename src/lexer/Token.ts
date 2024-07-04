@@ -23,5 +23,6 @@ export enum TokenKind {
     T_COLON = 16,
     KW_INT = 17,
     KW_STR = 18,
-    KW_VOID = 19
+    KW_VOID = 19,
+    KW_RETURN = 20
 };
